@@ -1,0 +1,8 @@
+env/
+media/*
+__pycache__/
+*.mypy*
+
+*.log
+*.aux
+*.pdf
