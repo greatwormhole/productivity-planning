@@ -4,11 +4,12 @@ from random import expovariate
 from queue import Queue, PriorityQueue
 from functools import reduce
 
-from typing import Literal, Final, Any
+from typing import Literal, Final, Any, Callable
+from io import TextIOWrapper
 
 def logging_required(type: Literal['CEC', 'FEC']):
 
-    def decorator(func):
+    def decorator(func: Callable[..., None]):
 
         def wrapper(self: Simulation, *args, **kwargs):
             func(self, *args, **kwargs)
@@ -25,6 +26,8 @@ def logging_required(type: Literal['CEC', 'FEC']):
                     event_type = 'produced'
                 elif machine.state == 'setting' or machine.state == 'waiting':
                     event_type = 'failure'
+                else:
+                    raise NotImplementedError
                     
                 self.log_event(f'New event!\n{type}: time = {self.current_time}, type = {event_type}, machine_id = {machine.id}\n\n')
 
@@ -100,9 +103,9 @@ class Simulation:
         self.avg_waiting_machines: float = 0.0
         self.avg_busy_workers: float = 0.0
         
-        self.max_broken_machines = 0
-        self.max_waiting_machines = 0
-        self.max_busy_workers = 0
+        self.max_broken_machines: int = 0
+        self.max_waiting_machines: int = 0
+        self.max_busy_workers: int = 0
         
         self._init()
 
@@ -213,7 +216,7 @@ class Simulation:
             self.waiting_machines_num -= 1
         
     def _init(self) -> None:
-        self.logfile = open(self.logfile_path, 'w')
+        self.logfile: TextIOWrapper = open(self.logfile_path, 'w')
         
         for machine in self.machines:
             match(machine.state):
