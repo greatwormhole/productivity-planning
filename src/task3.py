@@ -70,7 +70,13 @@ class Machine:
         
 class Simulation:
     
-    def __init__(self, machine_num: int, worker_num: int, prod_time: float, setup_time: float, failure_on_product: int, logfile_path: str, sim_time: float) -> None:
+    def __init__(self, machine_num: int,
+                 worker_num: int,
+                 prod_time: float,
+                 setup_time: float,
+                 failure_on_product: int,
+                 logfile_path: str,
+                 sim_time: float) -> None:
         
         # Constants
         
@@ -211,7 +217,7 @@ class Simulation:
         
         if not self.recovery_queue.empty() and self.busy_workers_num < self.worker_num:
             queued_machine = self.recovery_queue.get()
-            self._handle_recovery(queued_machine)
+            self._plan_recovery(queued_machine)
             self.busy_workers_num += 1   
             self.waiting_machines_num -= 1
         
