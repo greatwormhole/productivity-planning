@@ -50,5 +50,5 @@ if __name__ == "__main__":
                 logfile_path=data3['logfile_path'],
                 sim_time=float(namespace.simtime),
             )
-            sim.run()
+            sim()
     

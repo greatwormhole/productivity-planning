@@ -2,10 +2,30 @@ from __future__ import annotations
 
 from random import expovariate
 from queue import Queue, PriorityQueue
-from functools import reduce
+from functools import reduce, total_ordering
 
 from typing import Literal, Final, Any, Callable
 from io import TextIOWrapper
+
+def collect_statistics(func: Callable[..., None]):
+
+    def decorator(self: Simulation, *args, **kwargs):
+        
+        # Average statistics
+        
+        self.avg_broken_machines += self.broken_machines_num * (self.current_time - self.prev_current_time) / self.sim_time
+        self.avg_waiting_machines += self.waiting_machines_num * (self.current_time - self.prev_current_time) / self.sim_time
+        self.avg_busy_workers += self.busy_workers_num * (self.current_time - self.prev_current_time) / self.sim_time
+
+        func(self, *args, **kwargs)
+        
+        # Maximum statistics
+        
+        self.max_broken_machines = max(self.max_broken_machines, self.broken_machines_num)
+        self.max_waiting_machines = max(self.max_waiting_machines, self.waiting_machines_num)
+        self.max_busy_workers = max(self.max_busy_workers, self.busy_workers_num)
+        
+    return decorator
 
 def logging_required(type: Literal['CEC', 'FEC']):
 
@@ -34,7 +54,7 @@ def logging_required(type: Literal['CEC', 'FEC']):
         return wrapper
 
     return decorator
-
+@total_ordering
 class Event:
     
     def __init__(self, time: float, type: Literal['produced', 'recovery', 'failure'], machine: Machine) -> None:
@@ -44,6 +64,12 @@ class Event:
         
     def __lt__(self, other: Event) -> bool:
         return self.time < other.time
+    
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, Event):
+            raise NotImplementedError
+        
+        return self.time == other.time
     
     def __repr__(self) -> str:
         return f'time = {self.time}, type = {self.type}, machine_id = {self.machine.id}\n'
@@ -118,8 +144,13 @@ class Simulation:
     def __del__(self) -> None:
         self.logfile.close()
 
+    def __call__(self, *args, **kwargs) -> None:
+        return self._run(*args, **kwargs)
+    
     @logging_required('FEC')
+    @collect_statistics
     def loop(self) -> None:
+        
         event = self.events.get()
         
         self.prev_current_time = self.current_time
@@ -133,9 +164,8 @@ class Simulation:
             case 'failure':
                 self._handle_failure(event.machine)
         
-        self._collect_statistics()
 
-    def run(self) -> None:
+    def _run(self, *args, **kwargs) -> None:
         
         while self.current_time < self.sim_time:
             self.loop()
@@ -144,20 +174,6 @@ class Simulation:
 
     def log_event(self, *args) -> None:
         self.logfile.write(reduce(lambda i, j: str(i) + str(j), args))
-
-    def _collect_statistics(self) -> None:
-
-        # Maximum statistics
-        
-        self.max_broken_machines = max(self.max_broken_machines, self.broken_machines_num)
-        self.max_waiting_machines = max(self.max_waiting_machines, self.waiting_machines_num)
-        self.max_busy_workers = max(self.max_busy_workers, self.busy_workers_num)
-        
-        # Average statistics
-        
-        self.avg_broken_machines += self.broken_machines_num * (self.current_time - self.prev_current_time) / self.sim_time
-        self.avg_waiting_machines += self.waiting_machines_num * (self.current_time - self.prev_current_time) / self.sim_time
-        self.avg_busy_workers += self.busy_workers_num * (self.current_time - self.prev_current_time) / self.sim_time
 
     def print_statistics(self) -> None:
         max_products_produced = max(map(lambda machine: machine.produced_num, self.machines))
